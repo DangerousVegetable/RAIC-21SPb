@@ -1,6 +1,8 @@
 #include "MyStrategy.hpp"
 #include <exception>
 
+#define ROLE WORKER
+
 MyStrategy::MyStrategy() : homePlanet(-1), resetTimer(0) {}
 
 model::Action MyStrategy::getAction(const model::Game& game) {
@@ -40,6 +42,7 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 	if (!prodCycle.isPlanned) {
 		prodCycle.planBuilding(game, logDists);
 		//role initialization
+		#if 0
 		vector<pair<int, int>> baseDists; //first - distance, second - home planet id
 		for (int id: teamHomePlanets) {
 			int maxdist = 0;
@@ -62,6 +65,8 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 				break;
 			}
 		}
+		#endif
+		role = ROLE;
 		cout << "\nrole:" << role;
 
 	} else {
@@ -227,7 +232,17 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 			//cout << "sendRobots is done\n";
 
 			double available = observer.ours[homePlanet]; 
-			while(available > 1000-prodCycle.logistsNum)
+			if(available > 0)
+			{
+				for(int i = 0; i < 3; i++)
+				{
+					for(int j = 0; j < prodCycle.buildingPlanet[i].size(); j++)
+					{
+						fc.send(homePlanet, prodCycle.buildingPlanet[i][j], 89*prodCycle.buildingWorkpower[i], {}, IGNORANCE);
+					}
+				}
+			}
+			/*while(available > 0)
 			{
 				for(int i = 0; i < 3; i++)
 				{
@@ -237,26 +252,16 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 					{
 						controlsum += prodCycle.resourceTraffic[j][i];
 					}
-					/*double num = 0; //actually flying
-					for(int j = 0; j < prodCycle.buildingPlanet[i].size(); j++)
-					{
-						num += fc.onFlightTo(prodCycle.buildingPlanet[i][j]); //currently flying to the ith jth building
-					}
-					
-					double needed = controlsum-num;
-					if(needed > 0)
-					{*/
 					double bneeded = controlsum/prodCycle.buildingPlanet[i].size(); //needed for one ith building
 
 					for(int j = 0; j < prodCycle.buildingPlanet[i].size(); j++)
 					{
-						if(available <= 1000-prodCycle.logistsNum) break;
-						fc.send(homePlanet, prodCycle.buildingPlanet[i][j], min(available,bneeded), {}, AVOIDANCE);
+						if(available <= 0) break;
+						fc.send(homePlanet, prodCycle.buildingPlanet[i][j], min(available,bneeded), {}, IGNORANCE);
 						available -= bneeded;
 					}
-					//}
 				}
-			}
+			}*/
 		}
 	}
 	
@@ -296,7 +301,7 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 		moveActions.push_back(move);
 	}
 
-	return model::Action(moveActions, buildActions, optional<model::Specialty>());
+	return model::Action(moveActions, buildActions, role == WORKER ? model::Specialty::PRODUCTION : role == LOGIST ? model::Specialty::LOGISTICS : model::Specialty::COMBAT);
 }
 
 void MyStrategy::init(const model::Game& game) {

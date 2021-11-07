@@ -132,14 +132,6 @@ bool Cycle::sendRobots(const model::Game& game, FlyingController& fc, Observer& 
 		}
 	}
 
-	double sumKRes = 0, sumKEmpty = 0;
-	for (int targetPl = planetType + 1; targetPl < resourceTraffic[planetType].size(); ++targetPl) {
-		sumKRes += resourceTraffic[planetType][targetPl];
-	}
-	for (int targetPl = 0; targetPl < planetType; ++targetPl) {
-		sumKEmpty += resourceTraffic[planetType][targetPl];
-	}
-
 	int freeRobots = observer.ours[planet] - fc.onFlightAt(planet);
 	// Cannot be negative, so
 	freeRobots = max(0, freeRobots);
@@ -154,16 +146,16 @@ bool Cycle::sendRobots(const model::Game& game, FlyingController& fc, Observer& 
 	int leftRobots = freeRobots;
 	int leftReses = freeReses;
 
-	static vector<vector<double>> shortageRobots(game.planets.size(), vector<double>(game.planets.size(), 0));
+	//static vector<vector<double>> shortageRobots(game.planets.size(), vector<double>(game.planets.size(), 0));
 
 	freeRobots = leftRobots; // чтобы рассчитывать пропорции из оставшихся
 	freeReses = leftReses; // чтобы рассчитывать пропорции из оставшихся
-	int totalFreeRobots = leftRobots;
+	//int totalFreeRobots = leftRobots;
 
 	int lastAction = -1;
 	//if (freeRobots < 12*3) return false;
 	for (int targetPl = planetType + 1; targetPl < resourceTraffic[planetType].size(); ++targetPl) {
-		int batch = (int)resourceTraffic[planetType][targetPl]/buildingPlanet[planetType].size()/buildingPlanet[targetPl].size();
+		int batch = (int)ceil(resourceTraffic[planetType][targetPl]/buildingPlanet[planetType].size()/buildingPlanet[targetPl].size());
 
 		for (int targetID: buildingPlanet[targetPl]) {
 			if(min(leftRobots, leftReses) >= batch)
@@ -180,7 +172,7 @@ bool Cycle::sendRobots(const model::Game& game, FlyingController& fc, Observer& 
 	freeRobots = leftRobots; // чтобы рассчитывать пропорции из оставшихся
 
 	for (int targetPl = 0; targetPl < planetType; ++targetPl) {
-		int batch = (int) resourceTraffic[planetType][targetPl]/buildingPlanet[planetType].size()/buildingPlanet[targetPl].size();
+		int batch = (int) ceil(resourceTraffic[planetType][targetPl]/buildingPlanet[planetType].size()/buildingPlanet[targetPl].size());
 
 		for (int targetID: buildingPlanet[targetPl]) {
 			if(leftRobots >= batch)
@@ -439,7 +431,7 @@ void Cycle::planBuilding(const model::Game& game, const vector<vector<int>>& pla
 			resourceTraffic[i][j] = num*factor; //from ith buildings to jth buildings goes num res
 		}
 	}
-/*
+
 	for(int i = 0; i < 9; i++)
 	{
 		for(int j = 0; j < 9; j++)
@@ -448,8 +440,13 @@ void Cycle::planBuilding(const model::Game& game, const vector<vector<int>>& pla
 		}
 		cout << "\n";
 	}
-*/
-	cout << "BASE:\n";
+
+	for(int i = 0; i < 9; i++)
+	{
+		cout << buildingWorkpower[i] << " ";
+	}
+
+	cout << "\nBASE:\n";
 	for (int i = 0; i < buildingPlanet.size(); i++) {
 		cout << i << ":\n\t";
 		for (int j = 0; j < buildingPlanet[i].size(); j++) {
