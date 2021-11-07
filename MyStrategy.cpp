@@ -33,8 +33,7 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 	observer.update(game, planetDists);
 	fc.updateSafeAdj(game, game.maxTravelDistance);
 
-	if (role == COMBAT)
-	{
+	if (role == COMBAT) {
 		//warController.update(game, fc, observer);
 	}
 
@@ -93,19 +92,16 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 		vector<double> upcomingWorkers(game.planets.size(), 0); //upcoming workers
 		vector<int> stoneUpcoming(game.planets.size(), 0);
 
-		for(int i = 0; i < game.planets.size(); i++)
-		{
-			upcomingWorkers[i] = max(observer.ours[i] + fc.onFlightTo(i),0);
-			if(game.planets[i].resources.count(model::Resource::STONE))
-			{
+		for (int i = 0; i < game.planets.size(); i++) {
+			upcomingWorkers[i] = max(observer.ours[i] + fc.onFlightTo(i), 0);
+			if (game.planets[i].resources.count(model::Resource::STONE)) {
 				stoneUpcoming[i] = game.planets[i].resources.at(t2r(STONE));
 			}
 		}
 
-		for(auto fg: fc.groups)
-		{
-			if (!fg.isFinished && fg.path.size() != 1 && fg.res.has_value() && fg.res.value() == model::Resource::STONE)
-			{
+		for (auto fg: fc.groups) {
+			if (!fg.isFinished && fg.path.size() != 1 && fg.res.has_value() &&
+				fg.res.value() == model::Resource::STONE) {
 				stoneUpcoming[fg.to] += fg.num; //stone coming to the planet
 			}
 		}
@@ -135,8 +131,7 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 						buildActions.push_back(
 								model::BuildingAction(buildingOrder[i].first, t2b(buildingOrder[i].second)));
 
-					}
-					else{
+					} else {
 						needWorkers[homePlanet] += price; //if there is not enough stone then we need some workers back to the homePlanet
 						freestone = 0;
 					}
@@ -147,15 +142,13 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 			}
 		}
 
-		if(role == WORKER)
-		{
-			if(prodCycle.isBuilt)
-			{
-				for(int i = 0; i < prodCycle.buildingPlanet.size(); i++) //ordering workers to go to the buildings
+		if (role == WORKER) {
+			if (prodCycle.isBuilt) {
+				for (int i = 0; i < prodCycle.buildingPlanet.size(); i++) //ordering workers to go to the buildings
 				{
-					for(int j = 0; j < prodCycle.buildingPlanet[i].size(); j++)
-					{
-						needWorkers[prodCycle.buildingPlanet[i][j]] = prodCycle.buildingWorkpower[i]/prodCycle.buildingPlanet[i].size()/1.2;
+					for (int j = 0; j < prodCycle.buildingPlanet[i].size(); j++) {
+						needWorkers[prodCycle.buildingPlanet[i][j]] =
+								prodCycle.buildingWorkpower[i] / prodCycle.buildingPlanet[i].size() / 1.2;
 						//cout << prodCycle.buildingPlanet[i][j] << ":" << needWorkers[prodCycle.buildingPlanet[i][j]] << "\n";
 					}
 				}
@@ -163,34 +156,27 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 			//cout << upcomingWorkers[0] << " " << needWorkers[0] << "\n";
 
 
-			for(int i = 0; i < game.planets.size(); i++)
-			{
-				if(needWorkers[i] > 0)
-				{
+			for (int i = 0; i < game.planets.size(); i++) {
+				if (needWorkers[i] > 0) {
 					needWorkers[i] += fc.onFlightAt(i);
 				}
 				needWorkers[i] -= upcomingWorkers[i];
 			}
- /*
-			for(int i = 0; i < buildingOrder.size(); i++)
-			{
-				if(isBuilt[i]) continue;
-				cout << buildingOrder[i].first << ": " << stoneUpcoming[buildingOrder[i].first] << " "<<needWorkers[buildingOrder[i].first] << "| ";
-			}
-			cout << "\n";*/
-			for(int i = 0; i < needWorkers.size(); i++)
-			{
-				if(needWorkers[i] > 0)
-				{
-					for(int id = 0; id < game.planets.size(); id++)
-					{
-						if(needWorkers[i] <= 0) break;
-						if(needWorkers[id] < 0)
-						{
-							int cantake = min((int)ceil(min(-needWorkers[id], needWorkers[i])), observer.ours[id]);
-							if(cantake != 0)
-							{
-								fc.send(id,i,cantake, {}, IGNORANCE);
+			/*
+					   for(int i = 0; i < buildingOrder.size(); i++)
+					   {
+						   if(isBuilt[i]) continue;
+						   cout << buildingOrder[i].first << ": " << stoneUpcoming[buildingOrder[i].first] << " "<<needWorkers[buildingOrder[i].first] << "| ";
+					   }
+					   cout << "\n";*/
+			for (int i = 0; i < needWorkers.size(); i++) {
+				if (needWorkers[i] > 0) {
+					for (int id = 0; id < game.planets.size(); id++) {
+						if (needWorkers[i] <= 0) break;
+						if (needWorkers[id] < 0) {
+							int cantake = min((int) ceil(min(-needWorkers[id], needWorkers[i])), observer.ours[id]);
+							if (cantake != 0) {
+								fc.send(id, i, cantake, {}, IGNORANCE);
 								needWorkers[i] -= cantake;
 								needWorkers[id] += cantake;
 							}
@@ -273,7 +259,7 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 			}
 		}
 	}
-
+	
 	if (game.currentTick == 999) {
 		int robC = 0;
 		fstream file("stat.txt", ios::in);
@@ -367,8 +353,7 @@ void MyStrategy::init(const model::Game& game) {
 
 	for (int i = 0; i < game.planets.size(); ++i) {
 		for (int j = 0; j < i; ++j) {
-			for (int k = 0; k < game.planets.size(); ++k)
-			{
+			for (int k = 0; k < game.planets.size(); ++k) {
 				planetDists[i][j] = min(planetDists[i][j], planetDists[i][k] + planetDists[k][j]);
 				planetDists[j][i] = planetDists[i][j];
 
