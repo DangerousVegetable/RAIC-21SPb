@@ -232,9 +232,43 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 		}*/
 
 		if (role == LOGIST) {
-			for (int id = 0; id < game.planets.size(); ++id) {
-				if (observer.ours[id] > 0) {
-					prodCycle.sendRobots(game, fc, observer, id);
+			for (int i = 0; i < prodCycle.buildingPlanet.size(); ++i) {
+				for(int j = 0; j < prodCycle.buildingPlanet[i].size(); j++)
+				{
+					prodCycle.sendRobots(game, fc, observer, prodCycle.buildingPlanet[i][j]);
+				}
+			}
+			//cout << "sendRobots is done\n";
+
+			double available = observer.ours[homePlanet]; 
+			while(available > 1000-prodCycle.logistsNum)
+			{
+				for(int i = 0; i < 3; i++)
+				{
+					
+					double controlsum = 0; //number of logists that has to be flying to ith buildings
+					for(int j = 0; j < prodCycle.resourceTraffic.size(); j++)
+					{
+						controlsum += prodCycle.resourceTraffic[j][i];
+					}
+					/*double num = 0; //actually flying
+					for(int j = 0; j < prodCycle.buildingPlanet[i].size(); j++)
+					{
+						num += fc.onFlightTo(prodCycle.buildingPlanet[i][j]); //currently flying to the ith jth building
+					}
+					
+					double needed = controlsum-num;
+					if(needed > 0)
+					{*/
+					double bneeded = controlsum/prodCycle.buildingPlanet[i].size(); //needed for one ith building
+
+					for(int j = 0; j < prodCycle.buildingPlanet[i].size(); j++)
+					{
+						if(available <= 1000-prodCycle.logistsNum) break;
+						fc.send(homePlanet, prodCycle.buildingPlanet[i][j], min(available,bneeded), {}, AVOIDANCE);
+						available -= bneeded;
+					}
+					//}
 				}
 			}
 		}
@@ -344,9 +378,16 @@ void MyStrategy::init(const model::Game& game) {
 		}
 	}
 
-
-	fc.setup(planetDists, &observer);
-	fc.updateAdj(game, game.maxTravelDistance);
+	if(role != LOGIST)
+	{
+		fc.setup(planetDists, &observer);
+		fc.updateAdj(game, game.maxTravelDistance);
+	}
+	else
+	{
+		fc.setup(logDists, &observer);
+		fc.updateAdj(game, game.maxTravelDistance+game.logisticsUpgrade);
+	}
 
 	observer.setup(game);
 

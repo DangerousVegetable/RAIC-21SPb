@@ -20,6 +20,33 @@ Cycle::Cycle() : buildingPlanet(9), resourceTraffic(9, vector<double>(9)), isBui
 				 /*stackedPlanet(CYCLE_BUILD_NUM, false), prodFactor(1),*/
 				 trafficCoeff() {
 
+	/*trafficCoeff[MINES].insert(pair<int, double>(FOUNDRY, 3.2));
+	trafficCoeff[FOUNDRY].insert(pair<int, double>(MINES, 1.6));
+
+	trafficCoeff[FOUNDRY].insert(pair<int, double>(CHIP_FACTORY, 0.8));
+	trafficCoeff[CHIP_FACTORY].insert(pair<int, double>(MINES, 0.6));
+	trafficCoeff[CHIP_FACTORY].insert(pair<int, double>(CAREER, 0.6));
+
+	trafficCoeff[FOUNDRY].insert(pair<int, double>(ACCUMULATOR_FACTORY, 0.4));
+	trafficCoeff[ACCUMULATOR_FACTORY].insert(pair<int, double>(MINES, 0.4));
+	trafficCoeff[ACCUMULATOR_FACTORY].insert(pair<int, double>(FARM, 0.2));
+
+	trafficCoeff[FOUNDRY].insert(pair<int, double>(REPLICATOR, 0.4));
+	trafficCoeff[CHIP_FACTORY].insert(pair<int, double>(REPLICATOR, 0.4));
+	trafficCoeff[ACCUMULATOR_FACTORY].insert(pair<int, double>(REPLICATOR, 0.2));
+	trafficCoeff[REPLICATOR].insert(pair<int, double>(MINES, 0.6));
+	trafficCoeff[REPLICATOR].insert(pair<int, double>(CAREER, 0.2));
+	trafficCoeff[REPLICATOR].insert(pair<int, double>(FARM, 0.2));
+
+	trafficCoeff[CAREER].insert(pair<int, double>(FURNACE, 1.6));
+	trafficCoeff[FURNACE].insert(pair<int, double>(CAREER, 0.8));
+
+	trafficCoeff[FURNACE].insert(pair<int, double>(CHIP_FACTORY, 0.8));
+
+	trafficCoeff[FARM].insert(pair<int, double>(BIOREACTOR, 0.8));
+	trafficCoeff[BIOREACTOR].insert(pair<int, double>(FARM, 0.4));
+
+	trafficCoeff[BIOREACTOR].insert(pair<int, double>(ACCUMULATOR_FACTORY, 0.4));*/
 	trafficCoeff[MINES].insert(pair<int, double>(FOUNDRY, 3.2));
 	trafficCoeff[FOUNDRY].insert(pair<int, double>(MINES, 1.6));
 
@@ -134,16 +161,18 @@ bool Cycle::sendRobots(const model::Game& game, FlyingController& fc, Observer& 
 	int totalFreeRobots = leftRobots;
 
 	int lastAction = -1;
-	//if (freeRobots < batchSize && !protectStuck) return false;
+	//if (freeRobots < 12*3) return false;
 	for (int targetPl = planetType + 1; targetPl < resourceTraffic[planetType].size(); ++targetPl) {
-		int batch = (int) (resourceTraffic[planetType][targetPl] * min(freeReses, freeRobots)
-						   / sumKRes / buildingPlanet[planetType].size());
+		int batch = (int)resourceTraffic[planetType][targetPl]/buildingPlanet[planetType].size()/buildingPlanet[targetPl].size();
 
 		for (int targetID: buildingPlanet[targetPl]) {
-			fc.send(planet, targetID, batch, optional<model::Resource>(t2r(resource)));
+			if(min(leftRobots, leftReses) >= batch)
+			{
+				fc.send(planet, targetID, batch, optional<model::Resource>(t2r(resource)));
 
-			leftRobots -= batch;
-			leftReses -= batch;
+				leftRobots -= batch;
+				leftReses -= batch;
+			}
 //			shortageRobots[planet][targetID] += plK.second * totalFreeRobots - batch;
 		}
 	}
@@ -151,22 +180,27 @@ bool Cycle::sendRobots(const model::Game& game, FlyingController& fc, Observer& 
 	freeRobots = leftRobots; // чтобы рассчитывать пропорции из оставшихся
 
 	for (int targetPl = 0; targetPl < planetType; ++targetPl) {
-		int batch = (int) (resourceTraffic[planetType][targetPl] / sumKEmpty * freeRobots);
+		int batch = (int) resourceTraffic[planetType][targetPl]/buildingPlanet[planetType].size()/buildingPlanet[targetPl].size();
 
 		for (int targetID: buildingPlanet[targetPl]) {
-			fc.send(planet, targetID, batch, optional<model::Resource>());
-			lastAction = targetID;
+			if(leftRobots >= batch)
+			{
+				fc.send(planet, targetID, batch, optional<model::Resource>());
+				lastAction = targetID;
 
-			leftRobots -= batch;
-			leftReses -= batch;
+				leftRobots -= batch;
+			}
 //			shortageRobots[planet][targetID] += plK.second * totalFreeRobots - batch;
 		}
 	}
+	#if 0 //пока убрал, потому что не очень понял для чего он нужен
 	if (leftRobots > 0 && lastAction != -1) {
 		fc.send(planet, lastAction, leftRobots, optional<model::Resource>());
 		//moveActions.rbegin()->workerNumber += leftRobots;
-		//#shortageRobots[planet][moveActions.rbegin()->targetPlanet] += leftRobots;
+		//#shortage
+		Robots[planet][moveActions.rbegin()->targetPlanet] += leftRobots;
 	}
+	#endif
 	return true;
 }
 
@@ -386,7 +420,8 @@ void Cycle::planBuilding(const model::Game& game, const vector<vector<int>>& pla
 
 	vector<double> bestwp = getWorkPower(bestpower);
 	vector<vector<int>> buildingPlan = positionBuilding(game, planetDists, bestwp, 50, 100);
-	cout << logistsRequired(planetDists, buildingPlan, bestwp) << " " << bestpower << " "
+	logistsNum = logistsRequired(planetDists, buildingPlan, bestwp);
+	cout << logistsNum << " " << bestpower << " "
 		 << bestpower / Cycle::baseConsumption / 5 << " per tick\n";
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	std::cout << "Time difference = " <<
@@ -401,10 +436,19 @@ void Cycle::planBuilding(const model::Game& game, const vector<vector<int>>& pla
 		for (auto edge: tr.second) {
 			int j = edge.first;
 			double num = edge.second;
-			resourceTraffic[i][j] = num; //from ith buildings to jth buildings goes num res
+			resourceTraffic[i][j] = num*factor; //from ith buildings to jth buildings goes num res
 		}
 	}
-
+/*
+	for(int i = 0; i < 9; i++)
+	{
+		for(int j = 0; j < 9; j++)
+		{
+			cout << resourceTraffic[i][j] << " ";
+		}
+		cout << "\n";
+	}
+*/
 	cout << "BASE:\n";
 	for (int i = 0; i < buildingPlanet.size(); i++) {
 		cout << i << ":\n\t";
