@@ -97,6 +97,11 @@ int FlyingController::onFlightTo(int planet) {
 }
 
 void FlyingController::send(int fr, int to, int num, optional<model::Resource> res, int safetyMode) {
+	int availableToSend = observer->ours[fr] - onFlightAt(fr);
+	if (availableToSend <= 0)
+		return;
+	
+	num = min(availableToSend, num);
 	FlyingGroup group(fr, to, num, res, safetyMode);
 	group.setPath(findPath(group), d);
 

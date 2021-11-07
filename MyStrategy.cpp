@@ -35,7 +35,7 @@ model::Action MyStrategy::getAction(const model::Game& game) {
 
 	if (role == COMBAT)
 	{
-		//warController.update(game, fc, observer);
+		warController.update(game, fc, observer);
 	}
 
 	if (!prodCycle.isPlanned) {
